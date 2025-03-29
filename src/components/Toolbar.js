@@ -1,18 +1,17 @@
 'use client'
-import { useState } from 'react'
-import { usePdfAnnotations } from '@/hooks/usePdfAnnotations'
+import { useState } from 'react' 
 import AnnotationTools from './AnnotationTools'
 import SignaturePad from './SignaturePad'
 import CommentsPanel from './CommentsPanel'
 import { saveAs } from 'file-saver'
 
-export default function Toolbar() {
-  const { pdfFile, annotations, exportPdf } = usePdfAnnotations()
-  const [activeTool, setActiveTool] = useState(null)
+export default function Toolbar({pdfFile, annotations, activeTool,
+  activeColor,
+  setActiveColor, setActiveTool,exportPdf}) {  
   const [showSignaturePad, setShowSignaturePad] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
-
+ 
   const handleExport = async () => {
     if (!pdfFile) return
     
@@ -35,6 +34,8 @@ export default function Toolbar() {
             <AnnotationTools 
               activeTool={activeTool}
               setActiveTool={setActiveTool}
+              setActiveColor={setActiveColor}
+              activeColor={activeColor}
               setShowSignaturePad={setShowSignaturePad}
               setShowComments={setShowComments}
             />
@@ -42,7 +43,7 @@ export default function Toolbar() {
           
           <div className="flex items-center space-x-3">
             {pdfFile && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-5">
                 <span className="text-sm text-gray-600 hidden sm:inline">
                   {annotations.length} annotation{annotations.length !== 1 ? 's' : ''}
                 </span>

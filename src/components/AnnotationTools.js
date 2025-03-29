@@ -3,9 +3,10 @@ import { HexColorPicker } from 'react-colorful'
 import { usePdfAnnotations } from '@/hooks/usePdfAnnotations'
 import { useState } from 'react'
 
-export default function AnnotationTools({ activeTool, setActiveTool, setShowSignaturePad, setShowComments }) {
-  const { setSelectedText, setSelectionPosition } = usePdfAnnotations()
-  const [color, setColor] = useState('#FFD700')
+export default function AnnotationTools({ activeTool, setActiveTool, 
+  activeColor,
+  setActiveColor, setShowSignaturePad, setShowComments }) {
+  const { setSelectedText, setSelectionPosition } = usePdfAnnotations() 
   const [showColorPicker, setShowColorPicker] = useState(false)
 
   const tools = [
@@ -72,15 +73,15 @@ export default function AnnotationTools({ activeTool, setActiveTool, setShowSign
           className="p-2 rounded-md transition-all duration-200 hover:bg-gray-200"
           title="Color Picker"
         >
-          <div className="w-5 h-5 rounded-full border-2 border-gray-300 shadow-sm" style={{ backgroundColor: color }} />
+          <div className="w-5 h-5 rounded-full border-2 border-gray-300 shadow-sm" style={{ backgroundColor: activeColor }} />
         </button>
       </div>
 
       {showColorPicker && (
         <div className="absolute z-20 mt-2 p-3 bg-white rounded-lg shadow-xl border border-gray-200">
-          <HexColorPicker color={color} onChange={setColor} />
+          <HexColorPicker color={activeColor} onChange={setActiveColor} />
           <div className="mt-2 text-center text-sm font-medium text-gray-700">
-            {color}
+            {activeColor}
             <div className="mt-1 text-xs text-gray-500">Click to copy</div>
           </div>
         </div>

@@ -2,8 +2,11 @@
 import { DocumentProvider } from '@/context/DocumentContext'
 import DocumentViewer from '@/components/DocumentViewer'
 import Toolbar from '@/components/Toolbar'
+import { usePdfAnnotations } from '@/hooks/usePdfAnnotations'
 
 export default function Home() {
+  const pdfAnnotations = usePdfAnnotations()
+
   return (
     <DocumentProvider>
       <div className="min-h-screen flex flex-col bg-gray-50">
@@ -14,11 +17,11 @@ export default function Home() {
           </div>
         </header>
         
-        <Toolbar />
+        <Toolbar  {...pdfAnnotations}/>
         
         <main className="flex-1 p-4 md:p-6">
           <div className="max-w-7xl mx-auto">
-            <DocumentViewer />
+            <DocumentViewer  {...pdfAnnotations}/>
           </div>
         </main>
         

@@ -1,69 +1,122 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { usePdfAnnotations } from '@/hooks/usePdfAnnotations'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+ 
+function useTextSelection(textLayerRef, activeTool, pageNumber, change, handleTextSelection) {
+  useEffect(() => {
+    const layer = textLayerRef.current;
+    if (!layer) {
+      console.log('Text layer not available');
+      return;
+    }
+  
+    const handleMouseUp = (e) => {
+      console.log('text selection working in mouseUp', layer);
+      console.log('MouseUp event on text layer', e.target);
+      
+      console.log('MouseUp event on text layer', activeTool);
+      if (!activeTool || !(activeTool === 'highlight' || activeTool === 'underline')) {
+        return;
+      }
 
-export default function DocumentViewer() {
-  const { 
-    pdfFile, 
-    numPages, 
-    setNumPages, 
-    annotations, 
-    addAnnotation, 
-    setPdfFile,
-    selectedText,
-    comments,
-    signatures,
-    selectionPosition,
-    handleTextSelection,
-    setSelectedText
-  } = usePdfAnnotations()
+      // Get selection relative to the text layer
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || !selection.toString().trim()) {
+        console.log('No valid text selection');
+        return;
+      }
+
+      // Calculate positions relative to the text layer
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const layerRect = layer.getBoundingClientRect();
+
+      const relativeX = rect.left - layerRect.left;
+      const relativeY = rect.top - layerRect.top;
+
+      console.log('Selected text:', {
+        text: selection.toString(),
+        pageNumber,
+        position: { x: relativeX, y: relativeY },
+        dimensions: { width: rect.width, height: rect.height }
+      });
+
+      // Pass the full selection object to handleTextSelection
+      handleTextSelection({
+        text: selection.toString(),
+        pageNumber,
+        position: {
+          x: relativeX,
+          y: relativeY,
+          width: rect.width,
+          height: rect.height
+        }
+      });
+    };
+
+    layer.addEventListener('mouseup', handleMouseUp, { passive: false });
+    
+    return () => {
+      console.log('Cleaning up text selection handler');
+      layer.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [activeTool, pageNumber, handleTextSelection, textLayerRef.current, change]);
+}
+
+export default function DocumentViewer({ 
+  pdfFile, 
+  numPages, 
+  setNumPages, 
+  annotations, 
+  addAnnotation, 
+  setPdfFile,
+  selectedText,
+  comments,
+  activeColor,
+  setActiveColor, 
+  signatures,
+  selectionPosition,
+  handleTextSelection,
+  setSelectedText, activeTool, setActiveTool
+}) {
   const [pageNumber, setPageNumber] = useState(1)
   const [scale, setScale] = useState(1.0)
-  const [activeColor, setActiveColor] = useState('#FFD700')
-  const [activeTool, setActiveTool] = useState(null)
+  const [change, setChange] = useState(false) 
   const [isLoading, setIsLoading] = useState(false)
   const documentRef = useRef(null)
-  const [pdfDimensions, setPdfDimensions] = useState({ width: 0, height: 0 });
-
-  // Add this effect to track PDF container size
+  const textLayerRef = useRef(null)
+  const [pdfDimensions, setPdfDimensions] = useState({ width: 0, height: 0 }) 
   useEffect(() => {
     const handleResize = () => {
-      const container = documentRef.current;
+      const container = documentRef.current
       if (container) {
         setPdfDimensions({
           width: container.clientWidth,
           height: container.clientHeight
-        });
-      }
-    };
-  
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [pdfFile]);
-  
-  useEffect(() => {
-    const handleMouseUp = () => {
-      if (activeTool && (activeTool === 'highlight' || activeTool === 'underline')) {
-        handleTextSelection()
+        })
       }
     }
 
-    document.addEventListener('mouseup', handleMouseUp)
-    return () => document.removeEventListener('mouseup', handleMouseUp)
-  }, [activeTool, handleTextSelection])
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [pdfFile])
+ 
+useEffect(() => {
+  console.log(activeTool, selectedText)
+  if (selectedText && activeTool && selectionPosition) {
+    
+    addAnnotation(activeTool, activeColor);
+    setActiveTool(null);
+  }
+}, [selectedText, activeTool, activeColor, addAnnotation, selectionPosition]);
 
-  useEffect(() => {
-    if (selectedText && activeTool) {
-      addAnnotation(activeTool, activeColor)
-      setActiveTool(null)
-    }
-  }, [selectedText, activeTool, activeColor, addAnnotation])
+  // Setup text selection handling
+  useTextSelection(textLayerRef, activeTool, pageNumber, change,handleTextSelection)
 
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages)
@@ -125,56 +178,7 @@ export default function DocumentViewer() {
       ) : (
         <div className="w-full">
           <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-2 sm:space-y-0">
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={() => setPageNumber(prev => Math.max(prev - 1, 1))}
-                disabled={pageNumber <= 1}
-                className="px-3 py-1 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Previous
-              </button>
-              <span className="px-3 py-1 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700">
-                Page {pageNumber} of {numPages}
-              </span>
-              <button 
-                onClick={() => setPageNumber(prev => Math.min(prev + 1, numPages))}
-                disabled={pageNumber >= numPages}
-                className="px-3 py-1 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center"
-              >
-                Next
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center bg-white border border-gray-300 rounded-md shadow-sm overflow-hidden">
-                <button 
-                  onClick={() => setScale(prev => Math.max(prev - 0.1, 0.5))}
-                  className="px-2 py-1 text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                  title="Zoom Out"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                  </svg>
-                </button>
-                <span className="px-3 py-1 text-sm font-medium text-gray-700 border-l border-r border-gray-300">
-                  {Math.round(scale * 100)}%
-                </span>
-                <button 
-                  onClick={() => setScale(prev => Math.min(prev + 0.1, 2.0))}
-                  className="px-2 py-1 text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                  title="Zoom In"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            {/* Page controls... (keep your existing page controls) */}
           </div>
 
           <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white relative">
@@ -199,11 +203,9 @@ export default function DocumentViewer() {
               />
             )}
             
-            
             <Document
               file={pdfFile}
               onLoadSuccess={onDocumentLoadSuccess}
-
               loading={
                 <div className="p-12 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
@@ -221,21 +223,32 @@ export default function DocumentViewer() {
               inputRef={documentRef}
               className="w-full"
             >
-              <Page 
-    pageNumber={pageNumber} 
-    scale={scale}
-    renderAnnotationLayer={true}
-    renderTextLayer={true}
-    className="border-b"
-    loading={
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    }
-  />
-  
-  {/* New overlay container */}
-  <div className="absolute inset-0 pointer-events-none">
+             <Page 
+  pageNumber={pageNumber} 
+  scale={scale}
+  renderAnnotationLayer={true}
+  renderTextLayer={true}
+  onLoadSuccess={() => {
+    setTimeout(() => {
+      const layer = document.querySelector('.react-pdf__Page__textContent');
+      if (layer) {
+        console.log('Found text layer:', layer);
+        textLayerRef.current = layer;
+       
+        setPageNumber(prev => prev);  
+        setChange(true)
+      }
+    }, 300);
+  }}
+  className="border-b"
+  loading={
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  }
+/>
+              
+<div className="absolute inset-0 pointer-events-none">
     {/* Annotations overlay */}
     <div className="relative" style={{
       width: `${pdfDimensions.width}px`,

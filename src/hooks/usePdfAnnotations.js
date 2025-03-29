@@ -9,12 +9,13 @@ export function usePdfAnnotations() {
   const [pdfFile, setPdfFile] = useState(null)
   const [pdfBytes, setPdfBytes] = useState(null)
   const [numPages, setNumPages] = useState(0)
+  const [activeColor, setActiveColor] = useState('#FFD700') 
   const [annotations, setAnnotations] = useState([])
   const [signatures, setSignatures] = useState([])
   const [comments, setComments] = useState([])
   const [selectedText, setSelectedText] = useState(null)
   const [selectionPosition, setSelectionPosition] = useState(null)
-
+  const [activeTool, setActiveTool] = useState(null)
   useEffect(() => {
     if (pdfFile) {
       const reader = new FileReader()
@@ -31,51 +32,75 @@ export function usePdfAnnotations() {
     }
   }, [pdfFile])
 
-  const handleTextSelection = () => {
-    console.log("Attempting text selection...");
+  // Modify the handleTextSelection function to accept either page number or full selection data
+const handleTextSelection = (currentPageNumberOrSelection) => {
+  // If we receive just the page number (original behavior)
+  if (typeof currentPageNumberOrSelection === 'number') {
+    const currentPageNumber = currentPageNumberOrSelection;
+    console.log("Starting text selection processing...");
     
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || !selection.toString().trim()) {
-      console.log('No valid text selection');
-      return;
-    }
+    // Add small delay to ensure selection is available
+    setTimeout(() => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || !selection.toString().trim()) {
+        console.log('No valid text selection found');
+        return;
+      }
   
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      
+      // Get the specific page container
+      const pageContainer = document.querySelector(`.react-pdf__Page[data-page-number="${currentPageNumber}"]`);
+      if (!pageContainer) {
+        console.error('Page container not found');
+        return;
+      }
+      
+      const pageRect = pageContainer.getBoundingClientRect();
+      
+      // Calculate positions relative to the page
+      const relativeX = rect.left - pageRect.left;
+      const relativeY = rect.top - pageRect.top;
+      
+      console.log('Captured selection:', {
+        text: selection.toString(),
+        page: currentPageNumber,
+        position: { x: relativeX, y: relativeY },
+        dimensions: { width: rect.width, height: rect.height }
+      });
+      console.log(selection)
+      setSelectedText({
+        text: selection.toString(),
+        pageNumber: currentPageNumber
+      });
+      
+      setSelectionPosition({
+        x: relativeX,
+        y: relativeY,
+        width: rect.width,
+        height: rect.height
+      });
+    }, 50);
+  } 
+  // If we receive a full selection object (from useTextSelection hook)
+  else {
+    const selection = currentPageNumberOrSelection;
+    console.log('Received pre-calculated selection:', selection);
     
-    // Get the PDF container position
-    const pdfContainer = document.querySelector('.react-pdf__Document');
-    if (!pdfContainer) {
-      console.error('PDF container not found');
-      return;
-    }
-    
-    const containerRect = pdfContainer.getBoundingClientRect();
-    
-    // Calculate relative positions
-    const relativeX = rect.left - containerRect.left;
-    const relativeY = rect.top - containerRect.top;
-    
-    console.log('Selection coordinates:', {
-      absolute: { x: rect.left, y: rect.top },
-      relative: { x: relativeX, y: relativeY },
-      container: containerRect
-    });
-  
     setSelectedText({
-      text: selection.toString(),
-      pageNumber: pageNumber // Use current page number
+      text: selection.text,
+      pageNumber: selection.pageNumber
     });
     
     setSelectionPosition({
-      x: relativeX,
-      y: relativeY,
-      width: rect.width,
-      height: rect.height
+      x: selection.position.x,
+      y: selection.position.y,
+      width: selection.position.width,
+      height: selection.position.height
     });
-  
-    selection.removeAllRanges();
-  };
+  }
+};
   const addAnnotation = async (type, color) => {
     if (!selectedText || !pdfBytes) return
     
@@ -191,7 +216,7 @@ export function usePdfAnnotations() {
     
     const modifiedPdfBytes = await pdfDoc.save()
     return new Blob([modifiedPdfBytes], { type: 'application/pdf' })
-  }
+  } 
 
   return {
     pdfFile,
@@ -200,6 +225,10 @@ export function usePdfAnnotations() {
     setNumPages,
     annotations,
     addAnnotation,
+    activeTool,
+    setActiveTool,
+    activeColor,
+    setActiveColor,
     signatures,
     addSignature,
     comments,

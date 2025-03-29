@@ -71,8 +71,17 @@ body {
 .react-pdf__Document {
   position: relative;
   width: 100%;
+} 
+/* Highlight the text layer for visibility */
+.react-pdf__Page__textContent {
+  border: 2px dashed rgba(255, 0, 0, 0.3) !important;
 }
 
+/* Make text selectable */
+.react-pdf__Page__textContent span {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
 .react-pdf__Page {
   position: relative;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
