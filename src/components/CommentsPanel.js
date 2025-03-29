@@ -1,12 +1,15 @@
 'use client'
 import { useState } from 'react'
-import Draggable from 'react-draggable'
-import { usePdfAnnotations } from '@/hooks/usePdfAnnotations'
+import Draggable from 'react-draggable' 
 
-export default function CommentsPanel({ onClose }) {
+export default function CommentsPanel({ onClose, currentPageNumber, addComment, pdfDimensions = { width: 500, height: 700 } }) {
   const [comment, setComment] = useState('')
-  const [position, setPosition] = useState({ x: 100, y: 100 })
-  const { addComment } = usePdfAnnotations()
+  const [position, setPosition] = useState({ x: 50, y: 50 }) // Start centered in small preview
+  const [commentSize, setCommentSize] = useState({ width: 150, height: 80 }) // Default comment size
+  
+  // Fixed small preview dimensions
+  const previewWidth = 300; // Smaller fixed width
+  const previewHeight = 200; // Smaller fixed height
 
   const handleSave = () => {
     if (!comment.trim()) {
@@ -14,13 +17,54 @@ export default function CommentsPanel({ onClose }) {
       return
     }
     
-    addComment(comment, position)
+    // Scale the position and size from preview to actual PDF dimensions
+    const scaleX = pdfDimensions.width / previewWidth;
+    const scaleY = pdfDimensions.height / previewHeight;
+    
+    const scaledPosition = {
+      x: position.x * scaleX,
+      y: position.y * scaleY
+    };
+    
+    const scaledSize = {
+      width: commentSize.width * scaleX,
+      height: commentSize.height * scaleY
+    };
+    
+    addComment(comment, scaledPosition, currentPageNumber, scaledSize)
     setComment('')
     onClose()
   }
 
   const handleDrag = (e, data) => {
     setPosition({ x: data.x, y: data.y })
+  }
+
+  const handleResize = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const startX = e.clientX
+    const startY = e.clientY
+    const startWidth = commentSize.width
+    const startHeight = commentSize.height
+    
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - startX
+      const deltaY = e.clientY - startY
+      setCommentSize({
+        width: Math.max(100, startWidth + deltaX),
+        height: Math.max(50, startHeight + deltaY)
+      })
+    }
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
   }
 
   return (
@@ -54,19 +98,48 @@ export default function CommentsPanel({ onClose }) {
           </div>
           
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Position on document:</h4>
-            <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-              <div className="relative h-32 w-full bg-white border border-gray-300 rounded">
-                <Draggable onDrag={handleDrag}>
-                  <div className="absolute cursor-move bg-yellow-50 border border-yellow-200 rounded p-2 shadow-sm max-w-xs">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Position and size on document:</h4>
+            <div className="flex flex-col items-center">
+              <div 
+                className="relative bg-white border border-gray-300 rounded overflow-hidden"
+                style={{
+                  width: `${previewWidth}px`,
+                  height: `${previewHeight}px`,
+                  backgroundImage: 'linear-gradient(45deg, #f0f0f0 25%, transparent 25%), linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0f0f0 75%), linear-gradient(-45deg, transparent 75%, #f0f0f0 75%)',
+                  backgroundSize: '20px 20px',
+                  backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
+                }}
+              >
+                <Draggable 
+                  onDrag={handleDrag}
+                  bounds="parent"
+                >
+                  <div 
+                    className="absolute cursor-move bg-yellow-50 border border-yellow-300 shadow-sm p-2"
+                    style={{
+                      width: `${commentSize.width}px`,
+                      height: `${commentSize.height}px`,
+                      minWidth: '100px',
+                      minHeight: '50px'
+                    }}
+                  >
                     {comment ? (
-                      <p className="text-sm text-gray-800">{comment}</p>
+                      <p className="text-sm text-gray-800 break-words h-full overflow-auto">{comment}</p>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">Comment preview</p>
+                      <p className="text-sm text-gray-500 italic h-full flex items-center justify-center">Comment preview</p>
                     )}
-                    <div className="absolute -bottom-2 -left-2 w-4 h-4 transform rotate-45 bg-yellow-50 border-b border-l border-yellow-200"></div>
+                    <div className="absolute -bottom-2 -left-2 w-4 h-4 transform rotate-45 bg-yellow-50 border-b border-l border-yellow-300"></div>
+                    <div 
+                      className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-blue-500 rounded-tl-sm"
+                      onMouseDown={handleResize}
+                    />
                   </div>
                 </Draggable>
+              </div>
+              <div className="mt-2 flex justify-between w-full text-xs text-gray-500">
+                <div>Preview: {previewWidth}×{previewHeight}px</div>
+                <div>Comment: {commentSize.width}×{commentSize.height}px</div>
+                <div>Position: {Math.round(position.x)}, {Math.round(position.y)}</div>
               </div>
             </div>
           </div>

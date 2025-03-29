@@ -7,7 +7,7 @@ import { saveAs } from 'file-saver'
 
 export default function Toolbar({pdfFile, annotations, activeTool,
   activeColor,
-  setActiveColor, setActiveTool,exportPdf}) {  
+  setActiveColor, setActiveTool,exportPdf, pageNumber, addSignature, addComment, pdfDimensions  }) {  
   const [showSignaturePad, setShowSignaturePad] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -25,7 +25,7 @@ export default function Toolbar({pdfFile, annotations, activeTool,
       setIsExporting(false)
     }
   }
-
+  console.log(pdfDimensions)
   return (
     <div className="bg-white shadow-md border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
@@ -76,11 +76,13 @@ export default function Toolbar({pdfFile, annotations, activeTool,
       </div>
 
       {showSignaturePad && (
-        <SignaturePad onClose={() => setShowSignaturePad(false)} />
+        <SignaturePad addSignature={addSignature} pdfDimensions={pdfDimensions}  onClose={() => setShowSignaturePad(false)} currentPageNumber={pageNumber}
+        />
       )}
 
       {showComments && (
-        <CommentsPanel onClose={() => setShowComments(false)} />
+        <CommentsPanel addComment={addComment} pdfDimensions={pdfDimensions}  onClose={() => setShowComments(false)} currentPageNumber={pageNumber}
+/>
       )}
     </div>
   )

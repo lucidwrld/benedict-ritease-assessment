@@ -9,6 +9,8 @@ export function usePdfAnnotations() {
   const [pdfFile, setPdfFile] = useState(null)
   const [pdfBytes, setPdfBytes] = useState(null)
   const [numPages, setNumPages] = useState(0)
+  const [pdfDimensions, setPdfDimensions] = useState({ width: 0, height: 0 }) 
+  const [pageNumber, setPageNumber] = useState(1)
   const [activeColor, setActiveColor] = useState('#FFD700') 
   const [annotations, setAnnotations] = useState([])
   const [signatures, setSignatures] = useState([])
@@ -117,29 +119,29 @@ const handleTextSelection = (currentPageNumberOrSelection) => {
     setSelectionPosition(null)
   }
 
-  const addSignature = async (signatureData, position = { x: 100, y: 100 }) => {
+  const addSignature = async (signatureData, position = { x: 100, y: 100 }, pageNumber = 1) => {
     if (!pdfBytes) return
     
     const newSignature = {
       data: signatureData,
-      pageNumber: 1, // For simplicity, we'll assume page 1
+      pageNumber: pageNumber, // Use passed page number
       position
     }
     
     setSignatures([...signatures, newSignature])
   }
-
-  const addComment = async (text, position = { x: 100, y: 100 }) => {
+  
+  const addComment = async (text, position = { x: 100, y: 100 }, pageNumber = 1) => {
     if (!pdfBytes) return
     
     const newComment = {
       text,
-      pageNumber: 1, // For simplicity, we'll assume page 1
+      pageNumber: pageNumber, // Use passed page number
       position
     }
     
     setComments([...comments, newComment])
-  }
+  } 
 
   const exportPdf = async () => {
     if (!pdfBytes) return
@@ -236,6 +238,9 @@ const handleTextSelection = (currentPageNumberOrSelection) => {
     exportPdf,
     selectedText,
     selectionPosition,
+    pageNumber,
+    setPageNumber,
+    pdfDimensions, setPdfDimensions,
     handleTextSelection,
     setSelectedText,
     setSelectionPosition

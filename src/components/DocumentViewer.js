@@ -81,22 +81,26 @@ export default function DocumentViewer({
   signatures,
   selectionPosition,
   handleTextSelection,
-  setSelectedText, activeTool, setActiveTool
+  pageNumber,
+  setPageNumber,
+  setSelectedText, activeTool, setActiveTool, pdfDimensions, setPdfDimensions
 }) {
-  const [pageNumber, setPageNumber] = useState(1)
+  
   const [scale, setScale] = useState(1.0)
   const [change, setChange] = useState(false) 
   const [isLoading, setIsLoading] = useState(false)
   const documentRef = useRef(null)
   const textLayerRef = useRef(null)
-  const [pdfDimensions, setPdfDimensions] = useState({ width: 0, height: 0 }) 
+  const resizeLayerRef = useRef(null)
   useEffect(() => {
     const handleResize = () => {
-      const container = documentRef.current
-      if (container) {
+       
+     const layer = resizeLayerRef.current 
+     console.log(layer,layer?.clientWidth, layer?.clientHeight )
+      if (layer) {
         setPdfDimensions({
-          width: container.clientWidth,
-          height: container.clientHeight
+          width: layer.clientWidth,
+          height: layer.clientHeight
         })
       }
     }
@@ -104,7 +108,7 @@ export default function DocumentViewer({
     handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [pdfFile])
+  }, [pdfFile, change])
  
 useEffect(() => {
   console.log(activeTool, selectedText)
@@ -231,9 +235,18 @@ useEffect(() => {
   onLoadSuccess={() => {
     setTimeout(() => {
       const layer = document.querySelector('.react-pdf__Page__textContent');
+      const pdfCanvas = document.querySelector('.react-pdf__Page__canvas');
+
       if (layer) {
-        console.log('Found text layer:', layer);
+         
         textLayerRef.current = layer;
+       
+        setPageNumber(prev => prev);  
+        setChange(true)
+      }
+      if (pdfCanvas) {
+         
+        resizeLayerRef.current = pdfCanvas;
        
         setPageNumber(prev => prev);  
         setChange(true)
@@ -257,19 +270,20 @@ useEffect(() => {
       {/* Render signatures */}
       {signatures.map((signature, index) => (
         signature.pageNumber === pageNumber && (
+          <div
+          key={index}
+          className="absolute pointer-events-none"
+          style={{
+            transform: `translate(${signature.position.x}px, ${signature.position.y}px)`,
+            zIndex: 10
+          }}
+        >
           <img
-            key={index}
             src={signature.data}
             alt="Signature"
-            className="absolute pointer-events-auto"
-            style={{
-              left: `${signature.position.x}px`,
-              top: `${signature.position.y}px`,
-              width: '200px',
-              height: '80px',
-              zIndex: 10
-            }}
+            className="w-[200px] h-[80px] object-contain"
           />
+        </div>
         )
       ))}
 
@@ -277,16 +291,16 @@ useEffect(() => {
       {comments.map((comment, index) => (
         comment.pageNumber === pageNumber && (
           <div
-            key={index}
-            className="absolute bg-yellow-100 border border-yellow-300 p-2 rounded max-w-xs pointer-events-auto"
-            style={{
-              left: `${comment.position.x}px`,
-              top: `${comment.position.y}px`,
-              zIndex: 10
-            }}
-          >
-            {comment.text}
-          </div>
+          key={index}
+          className="absolute bg-yellow-100 border border-yellow-300 p-2 rounded max-w-xs pointer-events-auto"
+          style={{
+            transform: `translate(${comment.position.x}px, ${comment.position.y}px)`,
+            zIndex: 10
+          }}
+        >
+          {comment.text}
+          <div className="absolute -bottom-2 -left-2 w-4 h-4 transform rotate-45 bg-yellow-100 border-b border-l border-yellow-300"></div>
+        </div>
         )
       ))}
 

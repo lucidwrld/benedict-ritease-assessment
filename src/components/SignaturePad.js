@@ -1,14 +1,17 @@
 'use client'
 import { useRef, useState } from 'react'
 import SignatureCanvas from 'react-signature-canvas'
-import Draggable from 'react-draggable'
-import { usePdfAnnotations } from '@/hooks/usePdfAnnotations'
+import Draggable from 'react-draggable' 
 
-export default function SignaturePad({ onClose }) {
+export default function SignaturePad({ onClose, currentPageNumber, addSignature, pdfDimensions = { width: 500, height: 700 } }) {
   const sigCanvas = useRef(null)
-  const [position, setPosition] = useState({ x: 100, y: 100 })
+  const [position, setPosition] = useState({ x: 50, y: 50 }) // Start position centered in small preview
   const [isSigning, setIsSigning] = useState(false)
-  const { addSignature } = usePdfAnnotations()
+  const [signatureSize, setSignatureSize] = useState({ width: 80, height: 40 }) // Smaller default size
+  
+  // Fixed small preview dimensions
+  const previewWidth = 300; // Smaller fixed width
+  const previewHeight = 200; // Smaller fixed height
 
   const handleSave = () => {
     if (sigCanvas.current.isEmpty()) {
@@ -16,8 +19,22 @@ export default function SignaturePad({ onClose }) {
       return
     }
     
+    // Scale the position from preview to actual PDF dimensions
+    const scaleX = pdfDimensions.width / previewWidth;
+    const scaleY = pdfDimensions.height / previewHeight;
+    
+    const scaledPosition = {
+      x: position.x * scaleX,
+      y: position.y * scaleY
+    };
+    
+    const scaledSize = {
+      width: signatureSize.width * scaleX,
+      height: signatureSize.height * scaleY
+    };
+    
     const signatureData = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png')
-    addSignature(signatureData, position)
+    addSignature(signatureData, scaledPosition, currentPageNumber, scaledSize)
     onClose()
   }
 
@@ -34,9 +51,36 @@ export default function SignaturePad({ onClose }) {
     setIsSigning(true)
   }
 
+  const handleResize = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const startX = e.clientX
+    const startY = e.clientY
+    const startWidth = signatureSize.width
+    const startHeight = signatureSize.height
+    
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - startX
+      const deltaY = e.clientY - startY
+      setSignatureSize({
+        width: Math.max(40, startWidth + deltaX),
+        height: Math.max(20, startHeight + deltaY)
+      })
+    }
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+      <div className="bg-white rounded-xl max-h-screen shadow-xl w-full max-w-md overflow-auto">
         <div className="flex justify-between items-center bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4">
           <h3 className="text-lg font-semibold text-white">Add Your Signature</h3>
           <button 
@@ -57,8 +101,8 @@ export default function SignaturePad({ onClose }) {
                 ref={sigCanvas}
                 penColor="black"
                 canvasProps={{ 
-                  width: 500, 
-                  height: 200, 
+                  width: 300, 
+                  height: 150, 
                   className: 'w-full bg-gray-50',
                   style: { cursor: isSigning ? 'crosshair' : 'default' }
                 }}
@@ -79,24 +123,53 @@ export default function SignaturePad({ onClose }) {
           </div>
           
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Position on document:</h4>
-            <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-              <div className="relative h-32 w-full bg-white border border-gray-300 rounded">
-                <Draggable onDrag={handleDrag}>
-                  <div className="absolute cursor-move">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Position and size on document:</h4>
+            <div className="flex flex-col items-center">
+              <div 
+                className="relative bg-white border border-gray-300 rounded overflow-hidden"
+                style={{
+                  width: `${previewWidth}px`,
+                  height: `${previewHeight}px`,
+                  backgroundImage: 'linear-gradient(45deg, #f0f0f0 25%, transparent 25%), linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0f0f0 75%), linear-gradient(-45deg, transparent 75%, #f0f0f0 75%)',
+                  backgroundSize: '20px 20px',
+                  backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
+                }}
+              >
+                <Draggable 
+                  onDrag={handleDrag}
+                  bounds="parent"
+                >
+                  <div 
+                    className="absolute cursor-move bg-white border border-blue-300 shadow-sm"
+                    style={{
+                      width: `${signatureSize.width}px`,
+                      height: `${signatureSize.height}px`,
+                      minWidth: '40px',
+                      minHeight: '20px'
+                    }}
+                  >
                     {sigCanvas.current && !sigCanvas.current.isEmpty() ? (
                       <img 
                         src={sigCanvas.current.getTrimmedCanvas().toDataURL('image/png')} 
                         alt="Signature Preview" 
-                        className="max-h-16 object-contain border border-gray-200 bg-white p-1 shadow-sm"
+                        className="w-full h-full object-contain p-1"
                       />
                     ) : (
-                      <div className="w-24 h-16 border-2 border-dashed border-gray-400 rounded flex items-center justify-center text-gray-500 text-sm">
-                        Your signature
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                        Signature
                       </div>
                     )}
+                    <div 
+                      className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-blue-500 rounded-tl-sm"
+                      onMouseDown={handleResize}
+                    />
                   </div>
                 </Draggable>
+              </div>
+              <div className="mt-2 flex justify-between w-full text-xs text-gray-500">
+                <div>Preview: {previewWidth}×{previewHeight}px</div>
+                <div>Signature: {signatureSize.width}×{signatureSize.height}px</div>
+                <div>Position: {Math.round(position.x)}, {Math.round(position.y)}</div>
               </div>
             </div>
           </div>
