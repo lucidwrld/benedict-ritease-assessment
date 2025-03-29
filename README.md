@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Document Signer & Annotation Tool
 
-## Getting Started
+## Overview
+A PDF annotation and signing tool that allows users to:
+- Upload PDF documents
+- Highlight and underline text
+- Add comments with adjustable position and size
+- Insert digital signatures
+- Export annotated PDFs
 
-First, run the development server:
+## Features
+- **Text Annotations**: Highlight and underline text selections
+- **Comments**: Add sticky-note style comments anywhere on the document
+- **Signatures**: Create and position digital signatures
+- **Export**: Save annotated PDFs with all modifications
+- **Responsive**: Works across different screen sizes
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Installation
+1. Clone the repository:
+   ```bash
+   git clone [repository-url]
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2.   npm install
+3.   npm run dev
+4.   
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Dependencies
+- Library	Purpose
+- react-pdf	PDF rendering
+- pdf-lib	PDF modification
+- pdfjs-dist	PDF parsing
+- react-colorful	Color selection
+- react-draggable	UI element positioning
+- react-signature-canvas	Signature capture
+- file-saver	File downloads
+Technical Challenges & Solutions
+Text Selection Accuracy
+Implemented custom position calculation relative to PDF text layers
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Annotation Persistence
+Created centralized state management using React Context
 
-## Learn More
+PDF Export Precision
+Used PDF-Lib with coordinate system transformations
 
-To learn more about Next.js, take a look at the following resources:
+Future Enhancements
+Annotation editing (move/resize/change)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Multi-page comments
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Undo/redo functionality
 
-## Deploy on Vercel
+Cloud storage integration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Additional annotation types (shapes, freehand)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
